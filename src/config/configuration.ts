@@ -8,7 +8,7 @@ export interface MongooseOptions {
 }
 
 export interface CorsConfig {
-  origin: string | boolean;
+  origin: string[] | boolean;
   methods: string[];
   allowedHeaders: string[];
   credentials: boolean;
@@ -37,7 +37,10 @@ export default (): Config => ({
   cors: {
     origin:
       process.env.NODE_ENV === 'production'
-        ? process.env.FRONTEND_URL || 'http://localhost:3000'
+        ? [
+            process.env.FRONTEND_URL || 'http://localhost:3000',
+            process.env.BACKEND_URL || 'http://localhost:5500',
+          ]
         : true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
