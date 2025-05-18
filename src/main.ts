@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { CorsConfig } from './config/configuration';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
   try {
@@ -18,6 +19,9 @@ async function bootstrap() {
         forbidNonWhitelisted: true, // throw errors if properties without decorators are present
       }),
     );
+
+    // Enable global exception filter
+    app.useGlobalFilters(new AllExceptionsFilter());
 
     // Enable CORS using configuration
     const corsConfig = configService.get<CorsConfig>('cors');

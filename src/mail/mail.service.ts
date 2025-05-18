@@ -1,20 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { Resend } from 'resend';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class MailService {
   private readonly resend: Resend;
 
-  constructor() {
-    this.resend = new Resend(process.env.RESEND_API_KEY);
+  constructor(private readonly configService: ConfigService) {
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    if (!apiKey) {
+      throw new Error('Resend API key is missing!');
+    }
+    this.resend = new Resend(apiKey);
   }
 
-  async sendMfaCode(to: string, code: string): Promise<void> {
+  async sendMfaMail(params: { to: string; code: string }): Promise<void> {
     await this.resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL!,
-      to,
+      to: params.to,
       subject: 'Your MFA Code',
-      text: `Your one-time MFA code is: ${code}`,
+      text: `Your one-time MFA code is: ${params.code}`,
     });
   }
 }
