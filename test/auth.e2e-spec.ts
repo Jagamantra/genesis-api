@@ -114,7 +114,7 @@ describe('AuthController (e2e)', () => {
     beforeEach(async () => {
       const [user, admin] = await Promise.all([
         dbConnection.collection('users').findOne({ email: testUser.email }),
-        dbConnection.collection('users').findOne({ email: testAdmin.email })
+        dbConnection.collection('users').findOne({ email: testAdmin.email }),
       ]);
 
       if (!user || !admin) {
@@ -198,7 +198,9 @@ describe('AuthController (e2e)', () => {
     let testUserId: string;
 
     beforeEach(async () => {
-      const user = await dbConnection.collection('users').findOne({ email: testUser.email });
+      const user = await dbConnection
+        .collection('users')
+        .findOne({ email: testUser.email });
       if (!user) {
         throw new Error('Test user not found in database');
       }
