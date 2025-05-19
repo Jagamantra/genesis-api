@@ -4,7 +4,7 @@ export class HelloResponseDto {
   @ApiProperty({
     description: 'The hello message',
     example: 'Hello World!',
-    type: String
+    type: String,
   })
   message: string;
 }
