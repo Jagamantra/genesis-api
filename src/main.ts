@@ -66,8 +66,6 @@ async function bootstrap() {
         'Authentication',
         'User registration and authentication endpoints',
       )
-      .addTag('Posts', 'Blog post management endpoints')
-      .addTag('Customers', 'Customer management endpoints')
       .build();
 
     const document = SwaggerModule.createDocument(app, config);

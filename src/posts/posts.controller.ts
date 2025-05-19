@@ -23,7 +23,7 @@ import { UserRole } from '../auth/schemas/user.schema';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AuthGuard } from '../common/guards/auth.guard';
 
-@ApiTags('posts')
+@ApiTags('posts', 'Blog post management endpoints')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 @Controller('posts')

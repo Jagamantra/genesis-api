@@ -22,7 +22,7 @@ import { Customer } from './schemas/customer.schema';
 import { UserRole } from '../auth/schemas/user.schema';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AuthGuard } from '../common/guards/auth.guard';
-@ApiTags('customers')
+@ApiTags('customers', 'Customer management endpoints')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(AuthGuard)
 @Controller('customers')
