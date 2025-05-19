@@ -26,7 +26,7 @@ export default (): Config => ({
   database: {
     uri: process.env.MONGODB_URI || '',
     options: {
-      dbName: process.env.DB_NAME || 'genesis-api',
+      dbName: `${process.env.DB_NAME || 'genesis-api'}${process.env.NODE_ENV === 'test' ? '-test' : ''}`,
       maxPoolSize: Number(process.env.MONGODB_POOL_SIZE) || 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,

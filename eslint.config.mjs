@@ -24,14 +24,21 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
-  },
-  {    rules: {
+  },  {    rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
       '@typescript-eslint/no-unsafe-call': 'off', // Allow decorator calls
       '@typescript-eslint/no-unsafe-member-access': 'off', // Allow decorator property access
       '@typescript-eslint/no-unsafe-assignment': 'off', // Allow decorator assignments
+    },
+  },
+  {
+    files: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-return': 'off', // Allow supertest returns in tests
+      '@typescript-eslint/no-unsafe-argument': 'off', // Allow test-specific type coercion
+      '@typescript-eslint/unbound-method': 'off', // Common in mocks and stubs
     },
   },
 );

@@ -7,18 +7,30 @@ import {
   Param,
   Delete,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { Customer } from './schemas/customer.schema';
-
+import { UserRole } from '../auth/schemas/user.schema';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { AuthGuard } from '../common/guards/auth.guard';
 @ApiTags('customers')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(AuthGuard)
 @Controller('customers')
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
   @Post()
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new customer assessment' })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -30,6 +42,7 @@ export class CustomersController {
   }
 
   @Get()
+  @Roles(UserRole.USER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all customer assessments' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -41,6 +54,7 @@ export class CustomersController {
   }
 
   @Get(':id')
+  @Roles(UserRole.USER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get a customer assessment by id' })
   @ApiParam({ name: 'id', description: 'Customer ID' })
   @ApiResponse({
@@ -57,6 +71,7 @@ export class CustomersController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update a customer assessment' })
   @ApiParam({ name: 'id', description: 'Customer ID' })
   @ApiResponse({
@@ -76,6 +91,7 @@ export class CustomersController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete a customer assessment' })
   @ApiParam({ name: 'id', description: 'Customer ID' })
   @ApiResponse({

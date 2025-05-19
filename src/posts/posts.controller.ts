@@ -7,18 +7,31 @@ import {
   Param,
   Delete,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { PostsService } from './posts.service';
 import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { Post as PostEntity } from './schemas/post.schema';
+import { UserRole } from '../auth/schemas/user.schema';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { AuthGuard } from '../common/guards/auth.guard';
 
 @ApiTags('posts')
+@ApiBearerAuth()
+@UseGuards(AuthGuard)
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Post()
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a new post' })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -30,6 +43,7 @@ export class PostsController {
   }
 
   @Get()
+  @Roles(UserRole.USER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get all posts' })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -41,6 +55,7 @@ export class PostsController {
   }
 
   @Get(':id')
+  @Roles(UserRole.USER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Get a post by id' })
   @ApiParam({ name: 'id', description: 'Post ID' })
   @ApiResponse({
@@ -57,6 +72,7 @@ export class PostsController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update a post' })
   @ApiParam({ name: 'id', description: 'Post ID' })
   @ApiResponse({
@@ -76,6 +92,7 @@ export class PostsController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete a post' })
   @ApiParam({ name: 'id', description: 'Post ID' })
   @ApiResponse({

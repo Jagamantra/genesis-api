@@ -4,6 +4,11 @@ import { CustomersService } from './customers.service';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 import { AssessmentStatus } from './enums/assessment-status.enum';
 import { NotFoundException } from '@nestjs/common';
+import { AuthGuard } from '../common/guards/auth.guard';
+import { MockAuthGuard } from '../common/testing/mock-auth.guard';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { Reflector } from '@nestjs/core';
 
 describe('CustomersController', () => {
   let controller: CustomersController;
@@ -36,8 +41,32 @@ describe('CustomersController', () => {
           provide: CustomersService,
           useValue: mockCustomersService,
         },
+        {
+          provide: JwtService,
+          useValue: {
+            sign: jest.fn(),
+            verify: jest.fn(),
+            verifyAsync: jest.fn(),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(),
+          },
+        },
+        {
+          provide: Reflector,
+          useValue: {
+            get: jest.fn(),
+            getAllAndOverride: jest.fn(),
+          },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useClass(MockAuthGuard)
+      .compile();
 
     controller = module.get<CustomersController>(CustomersController);
     service = module.get<CustomersService>(CustomersService);

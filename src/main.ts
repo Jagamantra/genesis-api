@@ -1,15 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { CorsConfig } from './config/configuration';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
   try {
     const app = await NestFactory.create(AppModule);
-    const configService = app.get(ConfigService);
 
     // Enable validation
     app.useGlobalPipes(
@@ -23,16 +20,54 @@ async function bootstrap() {
     // Enable global exception filter
     app.useGlobalFilters(new AllExceptionsFilter());
 
-    // Enable CORS using configuration
-    const corsConfig = configService.get<CorsConfig>('cors');
-    app.enableCors(corsConfig);
+    // Enable CORS with specific settings for Swagger UI
+    app.enableCors({
+      origin: true, // Allow all origins in development
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+      allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
+      exposedHeaders: ['Authorization'],
+      credentials: true,
+    });
 
     // Swagger Setup
     const config = new DocumentBuilder()
       .setTitle('Genesis API')
-      .setDescription('The Genesis API description')
+      .setDescription(
+        `
+        A modern RESTful API built with NestJS.
+        
+        ## Authentication
+        The API uses JWT Bearer token authentication. To access protected endpoints:
+        1. Register a new account (/auth/register)
+        2. Login with your credentials (/auth/login)
+        3. Verify the MFA code sent to your email (/auth/verify-mfa)
+        4. In the response, copy your access token
+        5. Click the "Authorize" button at the top and enter your token
+           - Enter ONLY the token value, do not include "Bearer"
+        
+        ## Role-Based Access
+        The API supports two roles:
+        - User: Can read posts and customers
+        - Admin: Can create and manage all resources
+      `,
+      )
       .setVersion('1.0')
-      .addBearerAuth()
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'Authorization',
+          in: 'header',
+        },
+        'JWT-auth',
+      )
+      .addTag(
+        'Authentication',
+        'User registration and authentication endpoints',
+      )
+      .addTag('Posts', 'Blog post management endpoints')
+      .addTag('Customers', 'Customer management endpoints')
       .build();
 
     const document = SwaggerModule.createDocument(app, config);

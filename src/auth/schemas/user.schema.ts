@@ -29,6 +29,15 @@ export class User {
 
   @Prop({ default: false })
   isVerified: boolean;
+
+  @Prop()
+  accessToken?: string;
+
+  @Prop()
+  accessTokenExpires?: Date;
+
+  @Prop({ default: false })
+  isTokenRevoked?: boolean;
 }
 
 export type UserDocument = User & Document;

@@ -7,7 +7,7 @@ import { Config } from '../config/configuration';
 @Injectable()
 export class DatabaseService implements OnApplicationShutdown {
   private readonly logger = new Logger(DatabaseService.name);
-  private connectionState: number = 0;
+  private connectionState = 0;
 
   constructor(
     @InjectConnection() private readonly connection: Connection,
@@ -15,6 +15,16 @@ export class DatabaseService implements OnApplicationShutdown {
   ) {
     this.handleConnectionEvents();
     this.logConnectionInfo();
+
+    // Additional safety check for test environment
+    if (process.env.NODE_ENV === 'test') {
+      const currentDb = this.connection.db?.databaseName;
+      if (!currentDb?.endsWith('-test')) {
+        throw new Error(
+          `Test environment must use a test database. Current database: ${currentDb}`,
+        );
+      }
+    }
   }
 
   private handleConnectionEvents(): void {
@@ -41,17 +51,30 @@ export class DatabaseService implements OnApplicationShutdown {
     }
   }
 
-  isConnected(): boolean {
-    return this.connectionState === 1;
-  }
-
   getConnection(): Connection {
     return this.connection;
   }
 
-  async onApplicationShutdown(): Promise<void> {
-    this.logger.log('Closing database connection...');
-    await this.connection.close();
-    this.logger.log('Database connection closed');
+  async onApplicationShutdown() {
+    if (this.connection) {
+      await this.connection.close();
+      this.logger.log('Database connection closed');
+    }
+  }
+
+  // Method for test cleanup
+  async cleanTestDb(): Promise<void> {
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error('cleanTestDb can only be called in test environment');
+    }
+    if (!process.env.DB_NAME?.includes('test')) {
+      throw new Error('cleanTestDb can only be called on test databases');
+    }
+
+    const collections = (await this.connection.db?.collections()) || [];
+    for (const collection of collections) {
+      await collection.deleteMany({});
+    }
+    this.logger.log('Test database cleaned');
   }
 }

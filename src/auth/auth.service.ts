@@ -3,9 +3,16 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { User, UserDocument } from './schemas/user.schema';
-import { LoginDto, RegisterDto, VerifyMfaDto } from './dto/auth.dto';
+import { User, UserDocument, UserRole } from './schemas/user.schema';
+import {
+  LoginDto,
+  RegisterDto,
+  VerifyMfaDto,
+  MfaResponseDto,
+  AuthResponseDto,
+} from './dto/auth.dto';
 import { MailService } from '../mail/mail.service';
+import { SendMfaEmailDto } from '../mail/dto/send-mfa-mail.dto';
 
 @Injectable()
 export class AuthService {
@@ -15,7 +22,7 @@ export class AuthService {
     private mailService: MailService,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<{ message: string }> {
+  async register(registerDto: RegisterDto): Promise<MfaResponseDto> {
     const { email, password } = registerDto;
 
     // Check if user exists
@@ -27,88 +34,153 @@ export class AuthService {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Generate MFA code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const mfaCodeExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
     // Create user
     const user = new this.userModel({
       email,
       password: hashedPassword,
+      mfaCode: code,
+      mfaCodeExpires,
+      role: UserRole.USER,
+      isVerified: false,
     });
     await user.save();
 
-    return { message: 'User registered successfully' };
+    // Send MFA code
+    const emailDto: SendMfaEmailDto = {
+      to: email,
+      code,
+    };
+    await this.mailService.sendMfaMail(emailDto);
+
+    return {
+      codeSent: true,
+      message: `Registration successful. MFA code sent to ${email}`,
+    };
   }
 
-  async login(loginDto: LoginDto): Promise<{ message: string }> {
+  async login(loginDto: LoginDto): Promise<MfaResponseDto> {
     const { email, password } = loginDto;
 
     // Find user
-    const user = await this.userModel.findOne({ email }).exec();
+    const user = await this.userModel.findOne({ email }).lean().exec();
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
+    const passwordValid = await bcrypt.compare(password, user.password);
+    if (!passwordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     // Generate MFA code
-    const mfaCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     const mfaCodeExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Save MFA code
-    user.mfaCode = mfaCode;
-    user.mfaCodeExpires = mfaCodeExpires;
-    await user.save();
+    // Update user with MFA code
+    await this.userModel
+      .updateOne(
+        { _id: user._id },
+        {
+          mfaCode: code,
+          mfaCodeExpires,
+        },
+      )
+      .exec();
 
-    // Send MFA code via email
-    await this.mailService.sendMfaMail({ to: email, code: mfaCode });
+    // Send MFA code
+    const emailDto: SendMfaEmailDto = {
+      to: email,
+      code,
+    };
+    await this.mailService.sendMfaMail(emailDto);
 
-    return { message: 'MFA code sent to your email' };
+    return {
+      codeSent: true,
+      message: `MFA code sent to ${email}`,
+    };
   }
 
-  async verifyMfa(verifyMfaDto: VerifyMfaDto): Promise<{ token: string }> {
+  async verifyMfa(verifyMfaDto: VerifyMfaDto): Promise<AuthResponseDto> {
     const { email, mfaCode } = verifyMfaDto;
 
     // Find user
-    const user = await this.userModel.findOne({ email }).exec();
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    const user = await this.userModel
+      .findOne({
+        email,
+        mfaCode,
+        mfaCodeExpires: { $gt: new Date() },
+      })
+      .exec();
 
-    // Check MFA code
-    if (
-      !user.mfaCode ||
-      user.mfaCode !== mfaCode ||
-      !user.mfaCodeExpires ||
-      user.mfaCodeExpires < new Date()
-    ) {
+    if (!user) {
       throw new UnauthorizedException('Invalid or expired MFA code');
     }
 
-    // Clear MFA code
-    user.mfaCode = undefined;
-    user.mfaCodeExpires = undefined;
-    user.isVerified = true;
-    await user.save();
+    // Clear MFA code and mark as verified
+    await this.userModel.updateOne(
+      { _id: user._id },
+      {
+        $unset: { mfaCode: 1, mfaCodeExpires: 1 },
+        $set: { isVerified: true },
+      },
+    );
 
-    // Generate JWT token
+    // Generate access token with 1 hour expiration
+    const expiresIn = 3600; // 1 hour in seconds
+    const accessTokenExpires = new Date(Date.now() + expiresIn * 1000);
+
     const payload = {
       sub: user._id,
       email: user.email,
       role: user.role,
     };
 
+    const accessToken = this.jwtService.sign(payload, { expiresIn });
+
+    // Store token information
+    await this.userModel
+      .updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            accessToken,
+            accessTokenExpires,
+            isTokenRevoked: false,
+          },
+        },
+      )
+      .exec();
+
     return {
-      token: this.jwtService.sign(payload),
+      accessToken,
+      email: user.email,
+      role: user.role,
+      expiresIn,
     };
   }
 
   async validateUser(email: string): Promise<UserDocument | null> {
     const user = await this.userModel.findOne({ email }).exec();
-    if (!user || !user.isVerified) {
+    if (!user?.isVerified) {
       return null;
     }
     return user;
+  }
+
+  async revokeToken(userId: string): Promise<void> {
+    await this.userModel
+      .updateOne(
+        { _id: userId },
+        {
+          isTokenRevoked: true,
+          $unset: { accessToken: 1, accessTokenExpires: 1 },
+        },
+      )
+      .exec();
   }
 }

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
@@ -8,8 +7,10 @@ import { AppService } from './app.service';
 import { CustomersModule } from './customers/customers.module';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
+import { PostsModule } from './posts/posts.module';
 import configuration from './config/configuration';
 import { MailModule } from './mail/mail.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -26,13 +27,6 @@ import { MailModule } from './mail/mail.module';
               : '.env',
       ],
     }),
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGODB_URI'),
-      }),
-      inject: [ConfigService],
-    }),
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
@@ -42,7 +36,9 @@ import { MailModule } from './mail/mail.module';
     DatabaseModule,
     CustomersModule,
     AuthModule,
+    PostsModule,
     MailModule,
+    CommonModule,
   ],
   controllers: [AppController],
   providers: [

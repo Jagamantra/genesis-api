@@ -3,6 +3,11 @@ import { PostsController } from './posts.controller';
 import { PostsService } from './posts.service';
 import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
 import { NotFoundException } from '@nestjs/common';
+import { AuthGuard } from '../common/guards/auth.guard';
+import { MockAuthGuard } from '../common/testing/mock-auth.guard';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { Reflector } from '@nestjs/core';
 
 describe('PostsController', () => {
   let controller: PostsController;
@@ -34,8 +39,32 @@ describe('PostsController', () => {
           provide: PostsService,
           useValue: mockPostsService,
         },
+        {
+          provide: JwtService,
+          useValue: {
+            sign: jest.fn(),
+            verify: jest.fn(),
+            verifyAsync: jest.fn(),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(),
+          },
+        },
+        {
+          provide: Reflector,
+          useValue: {
+            get: jest.fn(),
+            getAllAndOverride: jest.fn(),
+          },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useClass(MockAuthGuard)
+      .compile();
 
     controller = module.get<PostsController>(PostsController);
     service = module.get<PostsService>(PostsService);

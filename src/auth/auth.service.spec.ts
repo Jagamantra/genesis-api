@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { getModelToken } from '@nestjs/mongoose';
 import { Model, Query } from 'mongoose';
 import { AuthService } from './auth.service';
-import { User, UserDocument } from './schemas/user.schema';
+import { User, UserDocument, UserRole } from './schemas/user.schema';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import { UnauthorizedException } from '@nestjs/common';
@@ -16,31 +16,68 @@ describe('AuthService', () => {
     _id: 'some-id',
     email: 'test@example.com',
     password: 'hashedPassword',
-    role: 'user',
+    role: UserRole.USER,
     isVerified: false,
+    save: jest.fn().mockResolvedValue(undefined),
   };
 
-  type MockQuery = Query<UserDocument | null, UserDocument>;
+  type MockQueryResult = Partial<UserDocument> | null;
 
-  const mockQueryBuilder: Partial<MockQuery> = {
-    exec: jest.fn(),
+  const createMockQuery = (result: MockQueryResult) => {
+    const query = {
+      exec: jest.fn().mockResolvedValue(result),
+      lean: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      equals: jest.fn().mockReturnThis(),
+      populate: jest.fn().mockReturnThis(),
+      orFail: jest.fn().mockReturnThis(),
+    } as unknown as Query<MockQueryResult, UserDocument>;
+    return query;
   };
 
-  const mockUserModel = {
-    new: jest.fn().mockResolvedValue(mockUser),
-    constructor: jest.fn().mockResolvedValue(mockUser),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
-    exec: jest.fn(),
-  };
+  // Create a mock Mongoose Model class
+  class MockModel {
+    constructor(private readonly data: Partial<User>) {
+      Object.assign(this, data);
+    }
+
+    save = jest.fn().mockResolvedValue(mockUser);
+
+    static findOne = jest.fn().mockImplementation(() => createMockQuery(null));
+
+    static findByIdAndUpdate = jest
+      .fn()
+      .mockImplementation(() => createMockQuery(mockUser));
+
+    static updateOne = jest.fn().mockImplementation(() => ({
+      exec: () => Promise.resolve({ modifiedCount: 1 }),
+    }));
+    static findByIdAndUpdate = jest
+      .fn()
+      .mockImplementation(() => createMockQuery(mockUser));
+    static updateOne = jest.fn().mockImplementation(() => ({
+      exec: () => Promise.resolve({ modifiedCount: 1 }),
+    }));
+    static findByIdAndUpdate = jest
+      .fn()
+      .mockImplementation(() => createMockQuery(mockUser));
+    static updateOne = jest.fn().mockImplementation(() => ({
+      exec: () => Promise.resolve({ modifiedCount: 1 }),
+    }));
+  }
+
+  const mockMongooseModel = MockModel as unknown as Model<UserDocument>;
 
   const mockJwtService = {
     sign: jest.fn().mockReturnValue('test-token'),
   };
 
   const mockMailService = {
-    sendMfaMail: jest.fn().mockResolvedValue(true),
+    sendMfaMail: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -49,7 +86,7 @@ describe('AuthService', () => {
         AuthService,
         {
           provide: getModelToken(User.name),
-          useValue: mockUserModel,
+          useValue: mockMongooseModel,
         },
         {
           provide: JwtService,
@@ -65,8 +102,11 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     model = module.get<Model<UserDocument>>(getModelToken(User.name));
 
-    // Reset mockQueryBuilder exec implementation
-    (mockQueryBuilder.exec as jest.Mock).mockReset();
+    // Reset mock implementations
+    jest.clearAllMocks();
+
+    // Set up default mock behaviors
+    (model.findOne as jest.Mock).mockReturnValue(createMockQuery(null));
   });
 
   it('should be defined', () => {
@@ -80,24 +120,18 @@ describe('AuthService', () => {
         password: 'password123',
       };
 
-      (mockQueryBuilder.exec as jest.Mock).mockResolvedValueOnce(null);
-
-      jest
+      const findOneSpy = jest
         .spyOn(model, 'findOne')
-        .mockReturnValue(mockQueryBuilder as MockQuery);
+        .mockImplementation(() => createMockQuery(null));
 
-      jest
-        .spyOn(bcrypt, 'hash')
-        .mockImplementation(() => Promise.resolve('hashedPassword'));
-
-      const saveSpy = jest
-        .spyOn(mockUserModel, 'save')
-        .mockResolvedValueOnce(mockUser);
+      jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashedPassword' as never);
 
       const result = await service.register(registerDto);
-
-      expect(result).toEqual({ message: 'User registered successfully' });
-      expect(saveSpy).toHaveBeenCalled();
+      expect(result).toEqual({
+        codeSent: true,
+        message: `Registration successful. MFA code sent to ${registerDto.email}`,
+      });
+      expect(findOneSpy).toHaveBeenCalledWith({ email: registerDto.email });
     });
 
     it('should throw if user already exists', async () => {
@@ -106,11 +140,7 @@ describe('AuthService', () => {
         password: 'password123',
       };
 
-      (mockQueryBuilder.exec as jest.Mock).mockResolvedValueOnce(mockUser);
-
-      jest
-        .spyOn(model, 'findOne')
-        .mockReturnValue(mockQueryBuilder as MockQuery);
+      jest.spyOn(model, 'findOne').mockReturnValue(createMockQuery(mockUser));
 
       await expect(service.register(registerDto)).rejects.toThrow(
         UnauthorizedException,
@@ -127,25 +157,58 @@ describe('AuthService', () => {
 
       const mockUserWithSave = {
         ...mockUser,
-        save: jest.fn().mockResolvedValueOnce(true),
+        save: jest.fn().mockResolvedValue(true),
       };
-
-      (mockQueryBuilder.exec as jest.Mock).mockResolvedValueOnce(
-        mockUserWithSave,
-      );
 
       jest
         .spyOn(model, 'findOne')
-        .mockReturnValue(mockQueryBuilder as MockQuery);
+        .mockReturnValue(
+          createMockQuery(mockUserWithSave) as Query<
+            UserDocument | null,
+            UserDocument
+          >,
+        );
 
-      jest
-        .spyOn(bcrypt, 'compare')
-        .mockImplementation(() => Promise.resolve(true));
+      jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
 
       const result = await service.login(loginDto);
-
-      expect(result).toEqual({ message: 'MFA code sent to your email' });
+      expect(result).toEqual({
+        codeSent: true,
+        message: `MFA code sent to ${loginDto.email}`,
+      });
       expect(mockMailService.sendMfaMail).toHaveBeenCalled();
+    });
+
+    it('should throw if user not found', async () => {
+      const loginDto = {
+        email: 'nonexistent@example.com',
+        password: 'password123',
+      };
+
+      jest
+        .spyOn(model, 'findOne')
+        .mockImplementation(() => createMockQuery(null));
+
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should throw if password is incorrect', async () => {
+      const loginDto = {
+        email: 'test@example.com',
+        password: 'wrongpassword',
+      };
+
+      jest
+        .spyOn(model, 'findOne')
+        .mockImplementation(() => createMockQuery(mockUser));
+
+      jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
+
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
@@ -160,21 +223,64 @@ describe('AuthService', () => {
         ...mockUser,
         mfaCode: '123456',
         mfaCodeExpires: new Date(Date.now() + 1000 * 60),
-        save: jest.fn().mockResolvedValueOnce(true),
+        save: jest.fn().mockResolvedValue(true),
       };
-
-      (mockQueryBuilder.exec as jest.Mock).mockResolvedValueOnce(
-        mockUserWithMfa,
-      );
 
       jest
         .spyOn(model, 'findOne')
-        .mockReturnValue(mockQueryBuilder as MockQuery);
+        .mockImplementation(() => createMockQuery(mockUserWithMfa));
 
       const result = await service.verifyMfa(verifyMfaDto);
+      expect(result).toHaveProperty('accessToken');
+      expect(result).toHaveProperty('email');
+      expect(result).toHaveProperty('role');
+      expect(result.accessToken).toBe('test-token');
+      expect(result.email).toBe(mockUser.email);
+      expect(result.role).toBe(mockUser.role);
+    });
 
-      expect(result).toHaveProperty('token');
-      expect(result.token).toBe('test-token');
+    it('should throw if MFA code is incorrect', async () => {
+      const verifyMfaDto = {
+        email: 'test@example.com',
+        mfaCode: 'wrong123',
+      };
+
+      const mockUserWithMfa = {
+        ...mockUser,
+        mfaCode: '123456',
+        mfaCodeExpires: new Date(Date.now() + 1000 * 60),
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      jest
+        .spyOn(model, 'findOne')
+        .mockImplementation(() => createMockQuery(mockUserWithMfa));
+
+      await expect(service.verifyMfa(verifyMfaDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('should throw if MFA code has expired', async () => {
+      const verifyMfaDto = {
+        email: 'test@example.com',
+        mfaCode: '123456',
+      };
+
+      const mockUserWithMfa = {
+        ...mockUser,
+        mfaCode: '123456',
+        mfaCodeExpires: new Date(Date.now() - 1000 * 60), // expired 1 minute ago
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      jest
+        .spyOn(model, 'findOne')
+        .mockImplementation(() => createMockQuery(mockUserWithMfa));
+
+      await expect(service.verifyMfa(verifyMfaDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });
