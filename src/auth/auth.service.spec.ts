@@ -56,18 +56,6 @@ describe('AuthService', () => {
     static updateOne = jest.fn().mockImplementation(() => ({
       exec: () => Promise.resolve({ modifiedCount: 1 }),
     }));
-    static findByIdAndUpdate = jest
-      .fn()
-      .mockImplementation(() => createMockQuery(mockUser));
-    static updateOne = jest.fn().mockImplementation(() => ({
-      exec: () => Promise.resolve({ modifiedCount: 1 }),
-    }));
-    static findByIdAndUpdate = jest
-      .fn()
-      .mockImplementation(() => createMockQuery(mockUser));
-    static updateOne = jest.fn().mockImplementation(() => ({
-      exec: () => Promise.resolve({ modifiedCount: 1 }),
-    }));
   }
 
   const mockMongooseModel = MockModel as unknown as Model<UserDocument>;
