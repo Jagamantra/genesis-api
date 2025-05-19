@@ -18,6 +18,8 @@ describe('AuthService', () => {
     password: 'hashedPassword',
     role: UserRole.USER,
     isVerified: false,
+    mfaCode: '123456',
+    mfaCodeExpires: new Date(Date.now() + 1000 * 60),
     save: jest.fn().mockResolvedValue(undefined),
   };
 
@@ -47,7 +49,21 @@ describe('AuthService', () => {
 
     save = jest.fn().mockResolvedValue(mockUser);
 
-    static findOne = jest.fn().mockImplementation(() => createMockQuery(null));
+    static findOne = jest.fn().mockImplementation((query: any) => {
+      // For verifyMfa
+      if (query?.mfaCode === '123456' && query?.email === mockUser.email) {
+        return createMockQuery({
+          ...mockUser,
+          isVerified: true,
+          mfaCode: '123456',
+          mfaCodeExpires: new Date(Date.now() + 60000), // expires in 1 minute
+        });
+      }
+      if (query?.email === mockUser.email) {
+        return createMockQuery(mockUser);
+      }
+      return createMockQuery(null);
+    });
 
     static findByIdAndUpdate = jest
       .fn()
@@ -94,7 +110,27 @@ describe('AuthService', () => {
     jest.clearAllMocks();
 
     // Set up default mock behaviors
-    (model.findOne as jest.Mock).mockReturnValue(createMockQuery(null));
+    MockModel.findOne = jest.fn().mockImplementation((query) => {
+      // For verifyMfa
+      if (query?.email && query?.mfaCode && query?.mfaCodeExpires?.$gt) {
+        const now = new Date();
+        // Return valid user for correct MFA code and future expiration
+        if (query.mfaCode === '123456' && query.email === mockUser.email) {
+          return createMockQuery({
+            ...mockUser,
+            mfaCode: '123456',
+            mfaCodeExpires: new Date(now.getTime() + 60000), // expires in 1 minute
+          });
+        }
+        // Return null for all other cases (wrong code or expired)
+        return createMockQuery(null);
+      }
+      // For other queries
+      if (query?.email === mockUser.email) {
+        return createMockQuery(mockUser);
+      }
+      return createMockQuery(null);
+    });
   });
 
   it('should be defined', () => {
@@ -207,17 +243,6 @@ describe('AuthService', () => {
         mfaCode: '123456',
       };
 
-      const mockUserWithMfa = {
-        ...mockUser,
-        mfaCode: '123456',
-        mfaCodeExpires: new Date(Date.now() + 1000 * 60),
-        save: jest.fn().mockResolvedValue(true),
-      };
-
-      jest
-        .spyOn(model, 'findOne')
-        .mockImplementation(() => createMockQuery(mockUserWithMfa));
-
       const result = await service.verifyMfa(verifyMfaDto);
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('email');
@@ -233,17 +258,6 @@ describe('AuthService', () => {
         mfaCode: 'wrong123',
       };
 
-      const mockUserWithMfa = {
-        ...mockUser,
-        mfaCode: '123456',
-        mfaCodeExpires: new Date(Date.now() + 1000 * 60),
-        save: jest.fn().mockResolvedValue(true),
-      };
-
-      jest
-        .spyOn(model, 'findOne')
-        .mockImplementation(() => createMockQuery(mockUserWithMfa));
-
       await expect(service.verifyMfa(verifyMfaDto)).rejects.toThrow(
         UnauthorizedException,
       );
@@ -255,16 +269,10 @@ describe('AuthService', () => {
         mfaCode: '123456',
       };
 
-      const mockUserWithMfa = {
-        ...mockUser,
-        mfaCode: '123456',
-        mfaCodeExpires: new Date(Date.now() - 1000 * 60), // expired 1 minute ago
-        save: jest.fn().mockResolvedValue(true),
-      };
-
+      // Mock findOne for this specific test to return null (simulating expired code)
       jest
         .spyOn(model, 'findOne')
-        .mockImplementation(() => createMockQuery(mockUserWithMfa));
+        .mockImplementation(() => createMockQuery(null));
 
       await expect(service.verifyMfa(verifyMfaDto)).rejects.toThrow(
         UnauthorizedException,

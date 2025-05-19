@@ -37,7 +37,10 @@ describe('AuthController', () => {
         email: 'test@example.com',
         password: 'password123',
       };
-      const expectedResult = { message: 'User registered successfully' };
+      const expectedResult = {
+        codeSent: true,
+        message: 'User registered successfully',
+      };
 
       const registerSpy = jest
         .spyOn(service, 'register')
@@ -55,7 +58,10 @@ describe('AuthController', () => {
         email: 'test@example.com',
         password: 'password123',
       };
-      const expectedResult = { message: 'MFA code sent to your email' };
+      const expectedResult = {
+        message: 'MFA code sent to your email',
+        codeSent: true,
+      };
 
       const loginSpy = jest
         .spyOn(service, 'login')
@@ -73,7 +79,13 @@ describe('AuthController', () => {
         email: 'test@example.com',
         mfaCode: '123456',
       };
-      const expectedResult = { token: 'jwt-token' };
+
+      const expectedResult = {
+        accessToken: 'jwt-token',
+        email: 'test@example.com',
+        role: 'user',
+        expiresIn: 3600,
+      };
 
       const verifyMfaSpy = jest
         .spyOn(service, 'verifyMfa')
