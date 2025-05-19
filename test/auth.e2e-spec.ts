@@ -111,15 +111,24 @@ describe('AuthController (e2e)', () => {
     let userToken: string;
     let adminToken: string;
 
-    beforeEach(() => {
+    beforeEach(async () => {
+      const [user, admin] = await Promise.all([
+        dbConnection.collection('users').findOne({ email: testUser.email }),
+        dbConnection.collection('users').findOne({ email: testAdmin.email })
+      ]);
+
+      if (!user || !admin) {
+        throw new Error('Test users not found in database');
+      }
+
       userToken = jwtService.sign({
-        sub: 'user-id',
+        sub: user._id.toString(),
         email: testUser.email,
         role: UserRole.USER,
       });
 
       adminToken = jwtService.sign({
-        sub: 'admin-id',
+        sub: admin._id.toString(),
         email: testAdmin.email,
         role: UserRole.ADMIN,
       });
@@ -186,6 +195,16 @@ describe('AuthController (e2e)', () => {
   });
 
   describe('JWT Token Validation', () => {
+    let testUserId: string;
+
+    beforeEach(async () => {
+      const user = await dbConnection.collection('users').findOne({ email: testUser.email });
+      if (!user) {
+        throw new Error('Test user not found in database');
+      }
+      testUserId = user._id.toString();
+    });
+
     it('should reject requests with no token', () => {
       return agent.get('/posts').expect(401);
     });
@@ -207,7 +226,7 @@ describe('AuthController (e2e)', () => {
     it('should reject requests with expired token', () => {
       const expiredToken = jwtService.sign(
         {
-          sub: 'user-id',
+          sub: testUserId,
           email: testUser.email,
           role: UserRole.USER,
         },
@@ -222,7 +241,7 @@ describe('AuthController (e2e)', () => {
 
     it('should accept requests with valid token', () => {
       const validToken = jwtService.sign({
-        sub: 'user-id',
+        sub: testUserId,
         email: testUser.email,
         role: UserRole.USER,
       });
