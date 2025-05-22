@@ -100,4 +100,11 @@ export class MfaResponseDto {
     description: 'Status message',
   })
   message: string;
+
+  @ApiProperty({
+    example: '123456',
+    description: 'MFA code for mock users in development/testing',
+    required: false,
+  })
+  mockMfaCode?: string;
 }

@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
+import { mockUsers, MockUserProfile } from './config/mock-users.config';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
 import {
   LoginDto,
@@ -62,10 +63,27 @@ export class AuthService {
     };
   }
 
+  private isMockUser(email: string): MockUserProfile | undefined {
+    return mockUsers.find((user) => user.email === email);
+  }
+
   async login(loginDto: LoginDto): Promise<MfaResponseDto> {
     const { email, password } = loginDto;
 
-    // Find user
+    // Check if it's a mock user
+    const mockUser = this.isMockUser(email);
+    if (mockUser) {
+      if (password !== mockUser.password) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      return {
+        codeSent: true,
+        message: `MFA code sent to ${email}`,
+        mockMfaCode: '123456', // Only in development/testing
+      };
+    }
+
+    // Regular user flow
     const user = await this.userModel.findOne({ email }).lean().exec();
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -108,7 +126,31 @@ export class AuthService {
   async verifyMfa(verifyMfaDto: VerifyMfaDto): Promise<AuthResponseDto> {
     const { email, mfaCode } = verifyMfaDto;
 
-    // Find user
+    // Check if it's a mock user
+    const mockUser = this.isMockUser(email);
+    if (mockUser) {
+      if (mfaCode !== '123456') {
+        throw new UnauthorizedException('Invalid MFA code');
+      }
+
+      const expiresIn = 3600;
+      const payload = {
+        sub: mockUser._id,
+        email: mockUser.email,
+        role: mockUser.role,
+      };
+
+      const accessToken = this.jwtService.sign(payload, { expiresIn });
+
+      return {
+        accessToken,
+        email: mockUser.email,
+        role: mockUser.role,
+        expiresIn,
+      };
+    }
+
+    // Regular user flow
     const user = await this.userModel
       .findOne({
         email,
@@ -164,7 +206,16 @@ export class AuthService {
     };
   }
 
-  async validateUser(email: string): Promise<UserDocument | null> {
+  async validateUser(
+    email: string,
+  ): Promise<UserDocument | null | MockUserProfile> {
+    // Check if it's a mock user
+    const mockUser = this.isMockUser(email);
+    if (mockUser) {
+      return mockUser;
+    }
+
+    // Regular user validation
     const user = await this.userModel.findOne({ email }).exec();
     if (!user?.isVerified) {
       return null;
