@@ -1,4 +1,12 @@
-import { Body, Controller, Post, HttpStatus, HttpCode } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  HttpStatus,
+  HttpCode,
+  Res,
+} from '@nestjs/common';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
 import {
   LoginDto,
@@ -170,18 +178,18 @@ export class AuthController {
   })
   async verifyMfa(
     @Body() verifyMfaDto: VerifyMfaDto,
+    @Res({ passthrough: true }) response: Response,
   ): Promise<AuthResponseDto> {
-    return this.authService.verifyMfa(verifyMfaDto);
+    return this.authService.verifyMfa(verifyMfaDto, response);
   }
 
   @Post('logout')
-  @ApiOperation({ summary: 'Logout user and revoke current token' })
+  @ApiOperation({ summary: 'Logout user and clear authentication cookie' })
   @ApiResponse({
     status: 200,
-    description: 'Token successfully revoked',
+    description: 'Successfully logged out',
   })
-  logout(): { message: string } {
-    // await this.authService.logout(req.user.sub);
-    return this.authService.logout();
+  logout(@Res({ passthrough: true }) response: Response): { message: string } {
+    return this.authService.logout(response);
   }
 }

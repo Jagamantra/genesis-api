@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -9,6 +10,9 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
     // Enable validation
+    // Enable cookie parser middleware
+    app.use(cookieParser());
+
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true, // strip properties that don't have decorators
@@ -21,12 +25,16 @@ async function bootstrap() {
     app.useGlobalFilters(new AllExceptionsFilter());
 
     // Enable CORS with specific settings for Swagger UI
+    // Enable CORS with secure cookie settings
+    const corsOrigin = process.env.NODE_ENV === 'production' 
+      ? process.env.CORS_ORIGIN || 'https://your-frontend-domain.com'
+      : true; // Allow all origins in development
+
     app.enableCors({
-      origin: true, // Allow all origins in development
+      origin: corsOrigin,
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
-      exposedHeaders: ['Authorization'],
-      credentials: true,
+      credentials: true, // Required for cookies
     });
 
     // Swagger Setup

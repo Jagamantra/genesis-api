@@ -32,9 +32,11 @@ export class AuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<Request>();
-    const token = this.extractTokenFromHeader(request);
+    const token = this.extractTokenFromRequest(request);
     if (!token) {
-      throw new UnauthorizedException('No token provided');
+      throw new UnauthorizedException(
+        'Authentication token not found in cookies or headers',
+      );
     }
 
     try {
@@ -76,25 +78,24 @@ export class AuthGuard implements CanActivate {
     }
   }
 
-  private extractTokenFromHeader(request: Request): string | undefined {
+  private extractTokenFromRequest(request: Request): string | undefined {
+    // First try to get token from cookies
+    const cookieToken = request.cookies?.access_token;
+    if (cookieToken && typeof cookieToken === 'string') {
+      return cookieToken;
+    }
+
+    // Fallback to Authorization header
     const authorization = request.headers.authorization;
     if (!authorization) {
-      throw new UnauthorizedException('Authorization header is missing');
+      return undefined;
     }
 
-    const [type, token] = authorization.split(' ');
-    if (type !== 'Bearer') {
-      throw new UnauthorizedException(
-        'Invalid token type. Expected Bearer token',
-      );
+    const [type, headerToken] = authorization.split(' ');
+    if (type !== 'Bearer' || !headerToken) {
+      return undefined;
     }
 
-    if (!token) {
-      throw new UnauthorizedException(
-        'Token is missing from Authorization header',
-      );
-    }
-
-    return token;
+    return headerToken;
   }
 }

@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { Response } from 'express';
 import * as bcrypt from 'bcrypt';
 import { mockUsers, MockUserProfile } from './config/mock-users.config';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
@@ -123,7 +124,10 @@ export class AuthService {
     };
   }
 
-  async verifyMfa(verifyMfaDto: VerifyMfaDto): Promise<AuthResponseDto> {
+  async verifyMfa(
+    verifyMfaDto: VerifyMfaDto,
+    response: Response,
+  ): Promise<AuthResponseDto> {
     const { email, mfaCode } = verifyMfaDto;
 
     // Check if it's a mock user
@@ -141,6 +145,14 @@ export class AuthService {
       };
 
       const accessToken = this.jwtService.sign(payload, { expiresIn });
+
+      // Set cookie in response
+      response.cookie('access_token', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: expiresIn * 1000, // convert to milliseconds
+      });
 
       return {
         accessToken,
@@ -172,17 +184,24 @@ export class AuthService {
       },
     );
 
-    // Generate access token with 1 hour expiration
+    // Generate access token
     const expiresIn = 3600; // 1 hour in seconds
     const accessTokenExpires = new Date(Date.now() + expiresIn * 1000);
-
     const payload = {
-      sub: user._id,
+      sub: user._id.toString(),
       email: user.email,
       role: user.role,
     };
 
     const accessToken = this.jwtService.sign(payload, { expiresIn });
+
+    // Set cookie in response
+    response.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: expiresIn * 1000,
+    });
 
     // Store token information
     await this.userModel
@@ -235,7 +254,12 @@ export class AuthService {
       .exec();
   }
 
-  logout(): { message: string } {
+  logout(response: Response): { message: string } {
+    response.clearCookie('access_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
     return { message: 'Successfully logged out' };
   }
 }
