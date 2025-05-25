@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Post,
-  HttpStatus,
-  HttpCode,
-  Request,
-} from '@nestjs/common';
+import { Body, Controller, Post, HttpStatus, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   LoginDto,
@@ -187,10 +180,8 @@ export class AuthController {
     status: 200,
     description: 'Token successfully revoked',
   })
-  async logout(
-    @Request() req: { user: { sub: string } },
-  ): Promise<{ message: string }> {
-    await this.authService.revokeToken(req.user.sub);
-    return { message: 'Successfully logged out' };
+  logout(): { message: string } {
+    // await this.authService.logout(req.user.sub);
+    return this.authService.logout();
   }
 }

@@ -234,4 +234,8 @@ export class AuthService {
       )
       .exec();
   }
+
+  logout(): { message: string } {
+    return { message: 'Successfully logged out' };
+  }
 }
