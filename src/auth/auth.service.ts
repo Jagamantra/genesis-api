@@ -142,7 +142,7 @@ export class AuthService {
         sub: mockUser._id,
         email: mockUser.email,
         role: mockUser.role,
-        isMockUser: true
+        isMockUser: true,
       };
 
       const accessToken = this.jwtService.sign(payload, { expiresIn });
@@ -262,5 +262,25 @@ export class AuthService {
       sameSite: 'strict'
     });
     return { message: 'Successfully logged out' };
+  }
+
+  async getUserDetails(userId: string): Promise<Omit<UserDocument | MockUserProfile, 'password'>> {
+    // Check if it's a mock user
+    const mockUser = mockUsers.find((user) => user._id === userId);
+    if (mockUser) {
+      const { password, ...userWithoutPassword } = mockUser;
+      return userWithoutPassword;
+    }
+
+    // Regular user flow
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Convert to plain object and remove password
+    const userObject = user.toObject();
+    const { password, ...userWithoutPassword } = userObject;
+    return userWithoutPassword;
   }
 }

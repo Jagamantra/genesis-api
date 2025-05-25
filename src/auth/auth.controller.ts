@@ -1,13 +1,19 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
   HttpStatus,
   HttpCode,
   Res,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
+import { User, UserDocument } from './schemas/user.schema';
+import { MockUserProfile } from './config/mock-users.config';
+import { AuthGuard } from '../common/guards/auth.guard';
 import {
   LoginDto,
   RegisterDto,
@@ -191,5 +197,34 @@ export class AuthController {
   })
   logout(@Res({ passthrough: true }) response: Response): { message: string } {
     return this.authService.logout(response);
+  }
+
+  @Get('me')
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Get current user details' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns the current user details',
+    schema: {
+      type: 'object',
+      properties: {
+        _id: { type: 'string' },
+        email: { type: 'string' },
+        role: { type: 'string' },
+        isVerified: { type: 'boolean' },
+        displayName: { type: 'string' },
+        photoURL: { type: 'string' },
+        phoneNumber: { type: 'string', nullable: true },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'User is not authenticated',
+  })
+  async getUserDetails(
+    @Request() req: { user: { sub: string } },
+  ): Promise<Omit<UserDocument | MockUserProfile, 'password'>> {
+    return this.authService.getUserDetails(req.user.sub);
   }
 }
