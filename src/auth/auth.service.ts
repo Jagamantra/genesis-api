@@ -142,6 +142,7 @@ export class AuthService {
         sub: mockUser._id,
         email: mockUser.email,
         role: mockUser.role,
+        isMockUser: true
       };
 
       const accessToken = this.jwtService.sign(payload, { expiresIn });

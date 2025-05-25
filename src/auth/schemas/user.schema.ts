@@ -11,7 +11,6 @@ export class User {
   @Prop({ type: Types.ObjectId, auto: true })
   _id?: Types.ObjectId;
 
-
   @Prop({ required: true, unique: true })
   email: string;
 

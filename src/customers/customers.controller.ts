@@ -15,6 +15,7 @@ import {
   ApiResponse,
   ApiParam,
   ApiBearerAuth,
+  ApiCookieAuth,
 } from '@nestjs/swagger';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
@@ -24,6 +25,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { AuthGuard } from '../common/guards/auth.guard';
 @ApiTags('customers', 'Customer management endpoints')
 @ApiBearerAuth('JWT-auth')
+@ApiCookieAuth('access_token')
 @UseGuards(AuthGuard)
 @Controller('customers')
 export class CustomersController {

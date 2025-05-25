@@ -12,6 +12,7 @@ import { Model } from 'mongoose';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { ROLES_KEY } from '../../auth/decorators/roles.decorator';
 import { User, UserDocument, UserRole } from '../../auth/schemas/user.schema';
+import { mockUsers } from '../../auth/config/mock-users.config';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -43,6 +44,17 @@ export class AuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token);
 
       // Just check if the user exists and is active
+      // Check if it's a mock user
+      const mockUser = mockUsers.find(u => u._id === payload.sub);
+      if (mockUser) {
+        if (!mockUser.isVerified) {
+          throw new UnauthorizedException('User is not verified');
+        }
+        request['user'] = { ...payload, isMockUser: true };
+        return true;
+      }
+
+      // Regular user check
       const user = await this.userModel
         .findOne({
           _id: payload.sub,
@@ -79,23 +91,30 @@ export class AuthGuard implements CanActivate {
   }
 
   private extractTokenFromRequest(request: Request): string | undefined {
+    console.log('Cookies:', request.cookies);
+    console.log('Headers:', request.headers);
+    
     // First try to get token from cookies
     const cookieToken = request.cookies?.access_token;
     if (cookieToken && typeof cookieToken === 'string') {
+      console.log('Using token from cookies');
       return cookieToken;
     }
 
     // Fallback to Authorization header
     const authorization = request.headers.authorization;
     if (!authorization) {
+      console.log('No authorization header found');
       return undefined;
     }
 
     const [type, headerToken] = authorization.split(' ');
     if (type !== 'Bearer' || !headerToken) {
+      console.log('Invalid authorization header format');
       return undefined;
     }
 
+    console.log('Using token from Authorization header');
     return headerToken;
   }
 }
