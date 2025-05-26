@@ -27,16 +27,28 @@ async function bootstrap() {
 
     // Enable CORS with specific settings for Swagger UI
     // Enable CORS with secure cookie settings
-    // const corsOrigin =
-    //   process.env.NODE_ENV === 'production'
-    //     ? process.env.CORS_ORIGIN || 'https://your-frontend-domain.com'
-    //   : true; // Allow all origins in development
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Split multiple origins (comma-separated) into an array
+    const allowedOrigins = isProduction
+      ? (process.env.FRONTEND_URLS?.split(',') || ['http://localhost:9002'])
+      : true; // Allow all in development
 
     app.enableCors({
-      origin: process.env.FRONTEND_URL,
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins === true) {
+          return callback(null, true);
+        }
+
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        } else {
+          return callback(new Error('Not allowed by CORS'));
+        }
+      },
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
-      credentials: true, // Required for cookies
+      credentials: true,
     });
 
     // Swagger Setup
