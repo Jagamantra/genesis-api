@@ -213,7 +213,7 @@ export class AuthService {
     response.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'none',
       maxAge: expiresIn * 1000,
     });
 

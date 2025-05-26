@@ -22,7 +22,7 @@ import { Customer } from './schemas/customer.schema';
 import { UserRole } from '../auth/schemas/user.schema';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AuthGuard } from '../common/guards/auth.guard';
-@ApiTags('customers', 'Customer management endpoints')
+@ApiTags('customers')
 @ApiBearerAuth('JWT-auth')
 @ApiCookieAuth('access_token')
 @UseGuards(AuthGuard)
