@@ -29,7 +29,7 @@ import { CustomersModule } from './customers/customers.module';
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
-        limit: 100,
+        limit: 1000,
       },
     ]),
     DatabaseModule,
