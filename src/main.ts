@@ -31,7 +31,7 @@ async function bootstrap() {
     //   process.env.NODE_ENV === 'production'
     //     ? process.env.CORS_ORIGIN || 'https://your-frontend-domain.com'
     //   : true; // Allow all origins in development
-
+ 
     app.enableCors({
       origin: true,
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
