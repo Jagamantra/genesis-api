@@ -6,6 +6,19 @@ export enum UserRole {
   ADMIN = 'admin',
 }
 
+export type ThemeSettings = {
+  theme?: 'light' | 'dark' | 'system';
+  accentColor?: string;
+  borderRadius?: string;
+  appVersion?: string;
+  appName?: string;
+  appIconPaths: string[];
+  appLogoUrl?: string | null;
+  fontSize?: string;
+  appScale?: string;
+  interfaceDensity?: 'compact' | 'comfortable' | 'spacious';
+};
+
 @Schema({ timestamps: true })
 export class User {
   @Prop({ type: Types.ObjectId, auto: true })
@@ -23,6 +36,21 @@ export class User {
     default: UserRole.USER,
   })
   role: UserRole;
+
+  @Prop({ type: String, required: false })
+  displayName: string;
+
+  @Prop({ type: String, required: false })
+  photoURL: string;
+
+  @Prop({ type: String, required: false })
+  phoneNumber: string;
+
+  @Prop({ type: Boolean, default: true })
+  receiveNotifications: boolean;
+
+  @Prop({ type: Object, default: {} })
+  preferences: Partial<ThemeSettings>;
 
   @Prop()
   mfaCode?: string;

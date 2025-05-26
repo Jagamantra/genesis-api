@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Param,
   HttpStatus,
   HttpCode,
   Res,
@@ -11,9 +13,11 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
-import { User, UserDocument } from './schemas/user.schema';
+import { UserDocument, UserRole } from './schemas/user.schema';
 import { MockUserProfile } from './config/mock-users.config';
-import { AuthGuard } from '../common/guards/auth.guard';
+import { ProjectConfig } from './schemas/project-config.schema';
+import { Roles } from './decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import {
   LoginDto,
   RegisterDto,
@@ -29,7 +33,7 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { Public } from '../common/decorators/public.decorator';
+import { AuthGuard } from '../common/guards/auth.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -226,5 +230,34 @@ export class AuthController {
     @Request() req: { user: { sub: string } },
   ): Promise<Omit<UserDocument | MockUserProfile, 'password'>> {
     return this.authService.getUserDetails(req.user.sub);
+  }
+
+  @Get('config')
+  @Public()
+  @ApiOperation({ summary: 'Get project configuration' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns the project configuration',
+    type: ProjectConfig,
+  })
+  async getProjectConfig(): Promise<ProjectConfig> {
+    return this.authService.getProjectConfig();
+  }
+
+  @Patch('config/:key')
+  @UseGuards(AuthGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update a specific project configuration field' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns the updated project configuration',
+    type: ProjectConfig,
+  })
+  async updateProjectConfig(
+    @Param('key') key: string,
+    @Body('value') value: ProjectConfig[keyof ProjectConfig],
+  ): Promise<ProjectConfig> {
+    const configKey = key as keyof ProjectConfig;
+    return this.authService.updateProjectConfig(configKey, value);
   }
 }

@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -6,6 +10,10 @@ import { Response } from 'express';
 import * as bcrypt from 'bcrypt';
 import { mockUsers, MockUserProfile } from './config/mock-users.config';
 import { User, UserDocument, UserRole } from './schemas/user.schema';
+import {
+  ProjectConfig,
+  ProjectConfigDocument,
+} from './schemas/project-config.schema';
 import {
   LoginDto,
   RegisterDto,
@@ -20,9 +28,14 @@ import { SendMfaEmailDto } from '../mail/dto/send-mfa-mail.dto';
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(ProjectConfig.name)
+    private projectConfigModel: Model<ProjectConfigDocument>,
     private jwtService: JwtService,
     private mailService: MailService,
-  ) {}
+  ) {
+    // Call ensureDefaultConfig but don't block constructor
+    void this.ensureDefaultConfig();
+  }
 
   async register(registerDto: RegisterDto): Promise<MfaResponseDto> {
     const { email, password } = registerDto;
@@ -259,16 +272,19 @@ export class AuthService {
     response.clearCookie('access_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      sameSite: 'strict',
     });
     return { message: 'Successfully logged out' };
   }
 
-  async getUserDetails(userId: string): Promise<Omit<UserDocument | MockUserProfile, 'password'>> {
+  async getUserDetails(
+    userId: string,
+  ): Promise<Omit<UserDocument | MockUserProfile, 'password'>> {
     // Check if it's a mock user
     const mockUser = mockUsers.find((user) => user._id === userId);
     if (mockUser) {
-      const { password, ...userWithoutPassword } = mockUser;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...userWithoutPassword } = mockUser;
       return userWithoutPassword;
     }
 
@@ -280,7 +296,81 @@ export class AuthService {
 
     // Convert to plain object and remove password
     const userObject = user.toObject();
-    const { password, ...userWithoutPassword } = userObject;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: __, ...userWithoutPassword } = userObject;
     return userWithoutPassword;
+  }
+
+  private async ensureDefaultConfig() {
+    const count = await this.projectConfigModel.countDocuments();
+    if (count === 0) {
+      await this.projectConfigModel.create({
+        appName: 'Genesis API',
+        appIconPaths: ['/icons/app-icon.png'],
+        appLogoUrl: '/mantra_collab_logo.ico',
+        faviconUrl: '/favicon.ico',
+        availableAccentColors: [
+          { name: 'Blue', value: '#0077FF' },
+          { name: 'Green', value: '#00CC66' },
+          { name: 'Purple', value: '#6B46C1' },
+        ],
+        defaultAccentColorName: 'Blue',
+        availableBorderRadii: [
+          { name: 'None', value: '0px' },
+          { name: 'Small', value: '4px' },
+          { name: 'Medium', value: '8px' },
+          { name: 'Large', value: '12px' },
+        ],
+        defaultBorderRadiusName: 'Medium',
+        availableAppVersions: [
+          { id: 'v1', name: 'Version 1.0', value: '1.0.0' },
+        ],
+        defaultAppVersionId: 'v1',
+        enableApplicationConfig: true,
+        availableFontSizes: [
+          { name: 'Small', value: '14px' },
+          { name: 'Medium', value: '16px' },
+          { name: 'Large', value: '18px' },
+        ],
+        defaultFontSizeName: 'Medium',
+        availableScales: [
+          { name: 'Compact', value: '0.9' },
+          { name: 'Normal', value: '1.0' },
+          { name: 'Large', value: '1.1' },
+        ],
+        defaultScaleName: 'Normal',
+        availableInterfaceDensities: [
+          { name: 'Compact', value: 'compact' },
+          { name: 'Comfortable', value: 'comfortable' },
+          { name: 'Spacious', value: 'spacious' },
+        ],
+        defaultInterfaceDensity: 'comfortable',
+        mockApiMode: process.env.NODE_ENV !== 'production',
+      });
+    }
+  }
+
+  async getProjectConfig(): Promise<ProjectConfig> {
+    const config = await this.projectConfigModel.findOne().lean();
+    if (!config) {
+      throw new NotFoundException('Project configuration not found');
+    }
+    return config;
+  }
+
+  async updateProjectConfig<K extends keyof ProjectConfig>(
+    key: K,
+    value: ProjectConfig[K],
+  ): Promise<ProjectConfig> {
+    const config = await this.projectConfigModel.findOne();
+    if (!config) {
+      throw new NotFoundException('Project configuration not found');
+    }
+
+    // Use type assertion to handle Mongoose document update
+    const configDoc = config as ProjectConfigDocument;
+    configDoc.set(key, value);
+    await configDoc.save();
+    return configDoc.toObject() as ProjectConfig;
   }
 }

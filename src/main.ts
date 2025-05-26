@@ -26,13 +26,13 @@ async function bootstrap() {
 
     // Enable CORS with specific settings for Swagger UI
     // Enable CORS with secure cookie settings
-    const corsOrigin =
-      process.env.NODE_ENV === 'production'
-        ? process.env.CORS_ORIGIN || 'https://your-frontend-domain.com'
-      : true; // Allow all origins in development
+    // const corsOrigin =
+    //   process.env.NODE_ENV === 'production'
+    //     ? process.env.CORS_ORIGIN || 'https://your-frontend-domain.com'
+    //   : true; // Allow all origins in development
 
     app.enableCors({
-      origin: true,
+      origin: process.env.FRONTEND_URL,
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
       credentials: true, // Required for cookies

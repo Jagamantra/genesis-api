@@ -45,7 +45,7 @@ export class AuthGuard implements CanActivate {
 
       // Just check if the user exists and is active
       // Check if it's a mock user
-      const mockUser = mockUsers.find(u => u._id === payload.sub);
+      const mockUser = mockUsers.find((u) => u._id === payload.sub);
       if (mockUser) {
         if (!mockUser.isVerified) {
           throw new UnauthorizedException('User is not verified');
@@ -93,7 +93,7 @@ export class AuthGuard implements CanActivate {
   private extractTokenFromRequest(request: Request): string | undefined {
     console.log('Cookies:', request.cookies);
     console.log('Headers:', request.headers);
-    
+
     // First try to get token from cookies
     const cookieToken = request.cookies?.access_token;
     if (cookieToken && typeof cookieToken === 'string') {
