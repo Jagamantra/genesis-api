@@ -33,7 +33,7 @@ async function bootstrap() {
     //   : true; // Allow all origins in development
 
     app.enableCors({
-      origin: process.env.FRONTEND_URL,
+      origin: true,
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
       credentials: true, // Required for cookies
