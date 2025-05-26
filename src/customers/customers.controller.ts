@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   HttpStatus,
@@ -72,7 +71,7 @@ export class CustomersController {
     return this.customersService.findOne(id);
   }
 
-  @Patch(':id')
+  @Post(':id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update a customer assessment' })
   @ApiParam({ name: 'id', description: 'Customer ID' })
@@ -89,7 +88,13 @@ export class CustomersController {
     @Param('id') id: string,
     @Body() updateCustomerDto: UpdateCustomerDto,
   ): Promise<Customer> {
-    return this.customersService.update(id, updateCustomerDto);
+    try {
+      return this.customersService.update(id, updateCustomerDto);
+    } catch (error) {
+      console.error('Error updating customer:', error);
+      // Optionally, rethrow the error or throw a custom HttpException
+      throw error; // so NestJS handles it properly
+    }
   }
 
   @Delete(':id')

@@ -3,9 +3,9 @@ import { Document } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum CustomerStatus {
-  IN_PROGRESS = 'in_progress',
+  IN_PROGRESS = 'in-progress',
   COMPLETED = 'completed',
-  FOLLOW_UP = 'follow_up',
+  On_Hold = 'on-hold',
   CANCELLED = 'cancelled',
 }
 
@@ -109,10 +109,6 @@ export class Customer {
   @ApiProperty({ example: 'Meeting notes...' })
   @Prop({ required: false })
   comments: string;
-
-  @ApiProperty()
-  @Prop({ type: Date })
-  lastModified: Date;
 
   @ApiProperty({
     enum: CustomerStatus,

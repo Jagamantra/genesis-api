@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEnum } from 'class-validator';
-import { AssessmentStatus } from '../enums/assessment-status.enum';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsEnum,
+  IsISO8601,
+  IsNotEmpty,
+} from 'class-validator';
+import { CustomerStatus } from '../schemas/customer.schema';
 
 export class CreateCustomerDto {
   @ApiProperty({
@@ -8,92 +15,284 @@ export class CreateCustomerDto {
     description: 'Name of the customer company',
     required: true,
   })
-  @IsString({ message: 'Customer name must be a string' })
-  readonly customerName!: string;
+  @IsString({ message: 'Company name must be a string' })
+  @IsNotEmpty()
+  readonly companyName!: string;
+
+  @ApiProperty({
+    example: 'Amsterdam, Netherlands',
+    description: 'Customer company address',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  readonly address!: string;
+
+  @ApiProperty({
+    example: '+31612345678',
+    description: 'Phone number of the customer',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  readonly phoneNumber!: string;
+
+  @ApiProperty({
+    example: 'info@acme.com',
+    description: 'Email of the customer',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  readonly email!: string;
+
+  @ApiProperty({
+    example: 'www.acme.com',
+    description: 'Website URL of the customer',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  readonly website?: string;
+
+  @ApiProperty({
+    example: '12345678',
+    description: 'KVK (chamber of commerce) number',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  readonly kvkNumber!: string;
+
+  @ApiProperty({
+    example: 'BV',
+    description: 'Legal form of the company',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  readonly legalForm!: string;
+
+  @ApiProperty({
+    example: 'Software Development',
+    description: 'Main activity of the company',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  readonly mainActivity!: string;
+
+  @ApiProperty({
+    example: 'IT Consulting',
+    description: 'Side activities of the company',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  readonly sideActivities?: string;
 
   @ApiProperty({
     example: 'John Doe',
-    description: 'Name of the primary contact',
+    description: 'Name of the DGA (director)',
     required: true,
   })
-  @IsString({ message: 'Contact name must be a string' })
-  readonly contactName!: string;
+  @IsString()
+  @IsNotEmpty()
+  readonly dga!: string;
+
+  @ApiProperty({
+    example: 50,
+    description: 'Staff full-time equivalent (FTE)',
+    required: true,
+  })
+  @IsNumber()
+  readonly staffFTE!: number;
+
+  @ApiProperty({
+    example: 1000000,
+    description: 'Annual turnover amount',
+    required: true,
+  })
+  @IsNumber()
+  readonly annualTurnover!: number;
+
+  @ApiProperty({
+    example: 500000,
+    description: 'Gross profit amount',
+    required: true,
+  })
+  @IsNumber()
+  readonly grossProfit!: number;
+
+  @ApiProperty({
+    example: 2023,
+    description: 'Payroll year',
+    required: true,
+  })
+  @IsNumber()
+  readonly payrollYear!: number;
+
+  @ApiProperty({
+    example: 'Company description here',
+    description: 'Description of the company',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  readonly description?: string;
+
+  @ApiProperty({
+    example: '2023-05-26',
+    description: 'Date of the customer visit',
+    required: true,
+  })
+  @IsISO8601()
+  readonly visitDate!: string;
 
   @ApiProperty({
     example: 'Jane Smith',
     description: 'Name of the assigned advisor',
     required: true,
   })
-  @IsString({ message: 'Advisor name must be a string' })
-  readonly advisorName!: string;
+  @IsString()
+  @IsNotEmpty()
+  readonly advisor!: string;
 
   @ApiProperty({
-    example: 'Initial assessment notes',
-    description: 'Additional notes about the assessment',
-    required: false,
+    example: 'Amsterdam Office',
+    description: 'Location of the visit',
+    required: true,
   })
-  @IsString({ message: 'Notes must be a string' })
-  @IsOptional()
-  readonly notes?: string;
+  @IsString()
+  @IsNotEmpty()
+  readonly visitLocation!: string;
 
   @ApiProperty({
-    enum: AssessmentStatus,
-    enumName: 'AssessmentStatus',
-    example: AssessmentStatus.IN_PROGRESS,
-    description: 'Current status of the assessment',
-    required: false,
-    default: AssessmentStatus.IN_PROGRESS,
+    example: 'Monthly',
+    description: 'Frequency of the visits',
+    required: true,
   })
-  @IsEnum(AssessmentStatus, { message: 'Invalid status value' })
+  @IsString()
+  @IsNotEmpty()
+  readonly visitFrequency!: string;
+
+  @ApiProperty({
+    example: 'John Doe - CEO',
+    description: 'Conversation partner at the visit',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  readonly conversationPartner!: string;
+
+  @ApiProperty({
+    example: 'Meeting notes...',
+    description: 'Additional comments',
+    required: false,
+  })
+  @IsString()
   @IsOptional()
-  readonly status?: AssessmentStatus = AssessmentStatus.IN_PROGRESS;
+  readonly comments?: string;
+
+  @ApiProperty({
+    enum: CustomerStatus,
+    enumName: 'CustomerStatus',
+    example: CustomerStatus.IN_PROGRESS,
+    description: 'Current status of the customer',
+    required: false,
+    default: CustomerStatus.IN_PROGRESS,
+  })
+  @IsEnum(CustomerStatus)
+  @IsOptional()
+  readonly status?: CustomerStatus = CustomerStatus.IN_PROGRESS;
 }
 
 export class UpdateCustomerDto {
-  @ApiProperty({
-    example: 'Acme Corp Updated',
-    description: 'Updated customer company name',
-    required: false,
-  })
-  @IsString({ message: 'Customer name must be a string' })
+  @IsString()
   @IsOptional()
-  readonly customerName?: string;
+  companyName?: string;
 
-  @ApiProperty({
-    example: 'John Doe Updated',
-    description: 'Updated primary contact name',
-    required: false,
-  })
-  @IsString({ message: 'Contact name must be a string' })
+  @IsString()
   @IsOptional()
-  readonly contactName?: string;
+  address?: string;
 
-  @ApiProperty({
-    example: 'Jane Smith Updated',
-    description: 'Updated advisor name',
-    required: false,
-  })
-  @IsString({ message: 'Advisor name must be a string' })
+  @IsString()
   @IsOptional()
-  readonly advisorName?: string;
+  phoneNumber?: string;
 
-  @ApiProperty({
-    example: 'Updated assessment notes',
-    description: 'Updated notes about the assessment',
-    required: false,
-  })
-  @IsString({ message: 'Notes must be a string' })
+  @IsString()
   @IsOptional()
-  readonly notes?: string;
+  email?: string;
 
-  @ApiProperty({
-    enum: AssessmentStatus,
-    enumName: 'AssessmentStatus',
-    example: AssessmentStatus.COMPLETED,
-    description: 'Updated status of the assessment',
-    required: false,
-  })
-  @IsEnum(AssessmentStatus, { message: 'Invalid status value' })
+  @IsString()
   @IsOptional()
-  readonly status?: AssessmentStatus;
+  website?: string;
+
+  @IsString()
+  @IsOptional()
+  kvkNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  legalForm?: string;
+
+  @IsString()
+  @IsOptional()
+  mainActivity?: string;
+
+  @IsString()
+  @IsOptional()
+  sideActivities?: string;
+
+  @IsString()
+  @IsOptional()
+  dga?: string;
+
+  @IsNumber()
+  @IsOptional()
+  staffFTE?: number;
+
+  @IsNumber()
+  @IsOptional()
+  annualTurnover?: number;
+
+  @IsNumber()
+  @IsOptional()
+  grossProfit?: number;
+
+  @IsNumber()
+  @IsOptional()
+  payrollYear?: number;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsString()
+  @IsOptional()
+  visitDate?: string;
+
+  @IsString()
+  @IsOptional()
+  advisor?: string;
+
+  @IsString()
+  @IsOptional()
+  visitLocation?: string;
+
+  @IsString()
+  @IsOptional()
+  visitFrequency?: string;
+
+  @IsString()
+  @IsOptional()
+  conversationPartner?: string;
+
+  @IsString()
+  @IsOptional()
+  comments?: string;
+
+  @IsEnum(CustomerStatus)
+  @IsOptional()
+  status?: CustomerStatus;
 }

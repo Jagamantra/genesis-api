@@ -18,6 +18,7 @@ async function bootstrap() {
         whitelist: true, // strip properties that don't have decorators
         transform: true, // transform payloads to be objects typed according to their DTO classes
         forbidNonWhitelisted: true, // throw errors if properties without decorators are present
+        stopAtFirstError: true,
       }),
     );
 
